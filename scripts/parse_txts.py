@@ -14,9 +14,19 @@ from config import *
 if __name__ == "__main__":
 
 
+    files = [
+        u"内科学第八版",
+        u"妇产科学第八版",
+        u"皮肤性病学第六版",
+        u"儿科学第八版",
+        # PDF converted
+        u"外科学八年制第二版",
+        u"临床医学概论",
+    ]
+
     title_re = re.compile(u"第[%s]*[章节篇].*" % u"".join(number_words), re.UNICODE)
 
-    for filename in [u"内科学第八版", u"妇产科学第八版", u"皮肤性病学第六版", u"儿科学第八版"]:
+    for filename in files:
 
         results = defaultdict(dict)
 
@@ -24,11 +34,11 @@ if __name__ == "__main__":
             content = txt_file.readlines()
 
         current_title = None
+        known_titles = set()
 
         # you may also want to remove whitespace characters like `\n` at the end of each line
         content = [x.strip().decode("utf-8") for x in content]
         for txt in content:
-            #if txt.startswith(u"第") and (u"节 " in txt or u"章 " in txt):
             if re.findall(title_re, txt):
                 name = u"".join(re.split(u"[章节篇]", txt)[1:])
                 # Replace space and tab in unicode
@@ -39,6 +49,13 @@ if __name__ == "__main__":
                     continue
 
                 current_title = name
+                if filename in [u"外科学八年制第二版", u"临床医学概论"]:
+                    current_title = re.split(u"g|i|I|(\d+)", current_title)[0]
+                    if current_title not in known_titles:
+                        known_titles.add(current_title)
+                    else:
+                        continue
+
                 gender = u""
                 age = u""
 

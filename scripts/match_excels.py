@@ -4,7 +4,7 @@
 import csv
 from openpyxl import Workbook, load_workbook
 
-from config import chronic, epidemic
+from config import chronic, epidemic, infection
 
 def check_fuzzy_match(string, array):
     for entry in array:
@@ -16,19 +16,31 @@ def check_fuzzy_match(string, array):
 
 if __name__ == '__main__':
 
+    files = [
+        u"内科学第八版",
+        u"妇产科学第八版",
+        u"皮肤性病学第六版",
+        u"儿科学第八版",
+        # PDF converted
+        u"外科学八年制第二版",
+        u"临床医学概论",
+        u"其他",
+    ]
+
     wb = Workbook()
     wb = load_workbook(filename='files/疾病信息表 - 20170410 - v1 - for Jiali.xlsx')
     ws = wb['Sheet1']
 
     results = {}
-    for filename in [u"内科学第八版", u"妇产科学第八版", u"皮肤性病学第六版", u"儿科学第八版"]:
+    for filename in files:
         with open('files/output/%s.csv' % filename) as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 key = row.pop('\xe7\x96\xbe\xe7\x97\x85\xe5\x90\x8d\xe7\xa7\xb0')
-                results[key] = row
+                if not results.has_key(key):
+                    results[key] = row
 
-    print len(results)
+    unknown = set()
 
     matched_count = 0
     for index, row in enumerate(ws.iter_rows()):
@@ -39,12 +51,15 @@ if __name__ == '__main__':
         gender = ''
         age = ''
 
-        # 检查慢性病、流行病
+        # 检查慢性病、流行病、传染病
         is_chronic = u"是" if (target_name in chronic or check_fuzzy_match(target_name, chronic)) else u"否"
         ws.cell(row=index+1, column=3, value=is_chronic)
 
         is_epidemic = u"是" if (target_name in epidemic or check_fuzzy_match(target_name, epidemic)) else u"否"
         ws.cell(row=index+1, column=6, value=is_epidemic)
+
+        is_infection = u"是" if (target_name in infection or check_fuzzy_match(target_name, infection)) else u"否"
+        ws.cell(row=index+1, column=5, value=is_infection)
 
         target_name = target_name.encode('utf-8')
 
@@ -64,10 +79,21 @@ if __name__ == '__main__':
                     matched_count += 1
                     break
 
-        ws.cell(row=index+1, column=9, value=gender)
-        ws.cell(row=index+1, column=10, value=age)
+        if not (gender or age):
+            unknown.add(target_name)
+
+        try:
+            ws.cell(row=index+1, column=9, value=gender)
+            ws.cell(row=index+1, column=10, value=age)
+        except Exception, e:
+            print "ERROR", e
+            pass
 
     wb.save('output.xlsx')
 
     print
     print "Matched in total:", matched_count
+    print
+    print "Unknown in total:", len(unknown)
+    for name in unknown:
+        print name
